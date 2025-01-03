@@ -1,0 +1,11 @@
+torch
+transformers
+torchvision
+torchinfo
+tqdm
+numpy
+pandas
+opencv-python
+pillow
+matplotlib
+streamlit
