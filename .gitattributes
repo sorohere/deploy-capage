@@ -1,0 +1,2 @@
+model.pt filter=lfs diff=lfs merge=lfs -text
+vocab.pth filter=lfs diff=lfs merge=lfs -text
