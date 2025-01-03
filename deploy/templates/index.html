@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Captioning</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Image Captioning</h1>
+        <form id="upload-form">
+            <input type="file" id="image" name="image" accept="image/*" required>
+            <button type="submit">Generate Caption</button>
+        </form>
+        <br>
+        <br>
+        <div class="caption" id="caption-text"></div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
