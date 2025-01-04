@@ -1,7 +1,7 @@
 import torch
 import matplotlib.pyplot as plt
 import torchvision.transforms as T
-import streamlit as st
+# import streamlit as st
 import cv2
 import re
 import string
@@ -76,42 +76,57 @@ def standarize_text(text):
     text = text.lower()
     return text
 
-def plot_attention(img, caption, attention_vectors, is_streamlit=False):
+import cv2
+import numpy as np
+import io
+from PIL import Image
+
+def plot_attention(img, caption, attention_vectors):
     """
-    Plot attention maps on the image in a grid layout with 4 columns.
+    Generate attention maps for each word in the caption as separate images.
 
     Args:
         img (numpy.ndarray): The input image in BGR format.
         caption (list): The caption corresponding to the image.
         attention_vectors (list): A list of attention vectors for each word in the caption.
-        is_streamlit (bool): Flag to indicate if the plot is for Streamlit. Defaults to False.
 
     Returns:
-        matplotlib.figure.Figure: The figure containing the attention plots.
+        list: A list of BytesIO objects containing the attention map images.
     """
-    plt.clf()
-
+    # Convert the image from BGR to RGB
     temp_image = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    height, width, _ = temp_image.shape
     num_attentions = len(caption) - 1
-    num_rows = (num_attentions + 3) // 4  # Calculate number of rows for a 4-column grid
 
-    fig, axes = plt.subplots(num_rows, 4, figsize=(16, 4 * num_rows))
-    axes = axes.flatten()
+    attention_images = []
 
-    for idx in range(len(axes)):
-        if idx < num_attentions:
-            temp_att = attention_vectors[idx].reshape(7, 7)
-            att_resized = cv2.resize(temp_att, (temp_image.shape[1], temp_image.shape[0]))
+    for idx in range(num_attentions):
+        # Resize the attention vector to match the image size
+        temp_att = attention_vectors[idx].reshape(7, 7)
+        att_resized = cv2.resize(temp_att, (width, height))
 
-            axes[idx].imshow(temp_image)
-            axes[idx].imshow(att_resized, cmap="jet", alpha=0.4)
-            axes[idx].set_title(f"Word: {caption[idx]}")
-            axes[idx].axis("off")
-        else:
-            axes[idx].axis("off")  # Hide any unused subplots
+        # Normalize the attention map for visualization
+        att_normalized = (att_resized - att_resized.min()) / (att_resized.max() - att_resized.min())
+        heatmap = (att_normalized * 255).astype(np.uint8)
 
-    plt.tight_layout()
-    return fig
+        # Apply a colormap to the heatmap
+        heatmap_color = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
+
+        # Overlay the heatmap on the image
+        overlay = cv2.addWeighted(temp_image, 0.6, heatmap_color, 0.4, 0)
+
+        # Add the word as text to the image
+        cv2.putText(
+            overlay, f"Word: {caption[idx]}", (10, 30),
+            cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA
+        )
+
+        # Convert the image to a BytesIO object
+        _, buffer = cv2.imencode('.png', cv2.cvtColor(overlay, cv2.COLOR_RGB2BGR))
+        attention_images.append(io.BytesIO(buffer))
+
+    return attention_images
+
 
 def pick_random_image(directory):
     """
