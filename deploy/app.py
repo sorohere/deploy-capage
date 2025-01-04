@@ -4,6 +4,7 @@ import numpy as np
 from PIL import Image
 import cv2
 import io
+import base64
 from construct.utils import set_cuda, image_transformation, plot_attention
 from construct.architecture import Encoder_Decoder_Model, Vocabulary, Image_encoder, Attention_Based_Decoder, AttentionLayer
 
@@ -52,37 +53,47 @@ def generate_attention(index):
         return jsonify({"error": "No image uploaded."}), 400
 
     uploaded_image = request.files['image']
+    
     try:
-        # Preprocess the uploaded image
-        image = Image.open(uploaded_image).convert("RGB")
+        # Process image same as generate_caption
+        image = Image.open(io.BytesIO(uploaded_image.read()))
+        if image.mode == 'RGBA':
+            image = image.convert('RGB')
         image = np.array(image)
-        aspect_ratio = image.shape[0] / image.shape[1]
-        new_height = int(480 * aspect_ratio)
-        image = cv2.resize(image, (480, new_height))
-
+        
         # Generate attention maps
         attentions, caption = model.predict(image, vocab)
-        if index >= len(caption) - 1:
-            return jsonify({"error": "Invalid attention index."}), 400
-
-        # Create an attention map image
+        
+        if index >= len(attentions):
+            return jsonify({"error": "Invalid attention map index"}), 400
+            
+        # Create attention map visualization
         temp_att = attentions[index].reshape(7, 7)
         att_resized = cv2.resize(temp_att, (image.shape[1], image.shape[0]))
         att_normalized = (att_resized - att_resized.min()) / (att_resized.max() - att_resized.min())
         heatmap = (att_normalized * 255).astype(np.uint8)
         heatmap_color = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
         overlay = cv2.addWeighted(image, 0.6, heatmap_color, 0.4, 0)
-
-        # Convert to PNG and return
-        _, buffer = cv2.imencode('.png', overlay)
-        return send_file(
-            io.BytesIO(buffer),
-            mimetype='image/png',
-            as_attachment=False,
-            download_name=f"attention_{index}.png"
+        
+        # Add the word as text
+        cv2.putText(
+            overlay, f"Word: {caption[index]}", (10, 30),
+            cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA
         )
+        
+        # Convert to Base64
+        _, buffer = cv2.imencode('.png', overlay)
+        img_base64 = base64.b64encode(buffer).decode('utf-8')
+        
+        # Return JSON with Base64 image and metadata
+        return jsonify({
+            "word": caption[index],
+            "attention_index": index,
+            "image_base64": img_base64
+        })
+        
     except Exception as e:
-        return jsonify({"error": f"Error generating attention map: {str(e)}"}), 500
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
