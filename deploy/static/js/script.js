@@ -24,8 +24,6 @@ document.getElementById("upload-form").addEventListener("submit", function (even
 
                 if (data.caption) {
                     captionText.innerText = `Caption: ${data.caption}`;
-                    
-                    // Store attention count for later use
                     window.attentionCount = data.attention_count;
                 } else {
                     captionText.innerText = "Error generating caption.";
@@ -49,24 +47,71 @@ document.getElementById("upload-form").addEventListener("submit", function (even
                 });
                 
                 if (response.ok) {
-                    const blob = await response.blob();
-                    const img = document.createElement("img");
-                    img.src = URL.createObjectURL(blob);
-                    img.alt = `Attention Map ${index + 1}`;
-                    img.style.margin = "10px";
-                    attentionMaps.appendChild(img);
+                    const data = await response.json();
+                    return {
+                        index: index,
+                        data: data
+                    };
                 }
             } catch (error) {
                 console.error(`Error loading attention map ${index}:`, error);
+                return null;
             }
         };
 
+        const displayAttentionMap = (mapData) => {
+            const { data } = mapData;
+            // Create container for this attention map
+            const mapContainer = document.createElement("div");
+            mapContainer.className = "attention-map-container";
+            mapContainer.style.margin = "20px";
+            mapContainer.style.display = "inline-block";
+            
+            // Create and set up image from Base64 data
+            const img = document.createElement("img");
+            img.src = `data:image/png;base64,${data.image_base64}`;
+            img.alt = `Attention Map for: ${data.word}`;
+            img.style.maxWidth = "400px";
+            img.style.margin = "10px";
+            
+            // Create word label
+            const label = document.createElement("div");
+            label.textContent = `Word: ${data.word}`;
+            label.style.color = "white";
+            label.style.marginTop = "5px";
+            
+            // Add elements to container
+            mapContainer.appendChild(img);
+            mapContainer.appendChild(label);
+            
+            // Add container to attention maps section
+            attentionMaps.appendChild(mapContainer);
+        };
+
         // Load all attention maps
+        const loadAndDisplayMaps = async (count) => {
+            try {
+                // Load all maps simultaneously but maintain order
+                const results = await Promise.all(
+                    [...Array(count)].map((_, i) => loadAttentionMap(i))
+                );
+                
+                // Filter out any failed loads and sort by index
+                const validResults = results
+                    .filter(result => result !== null)
+                    .sort((a, b) => a.index - b.index);
+                
+                // Display maps in order
+                validResults.forEach(displayAttentionMap);
+            } catch (error) {
+                console.error("Error loading attention maps:", error);
+            } finally {
+                loading.style.display = "none";
+            }
+        };
+
         if (window.attentionCount) {
-            Promise.all([...Array(window.attentionCount)].map((_, i) => loadAttentionMap(i)))
-                .finally(() => {
-                    loading.style.display = "none";
-                });
+            loadAndDisplayMaps(window.attentionCount);
         } else {
             // If attention count is not available, fetch caption first
             fetch("/generate-caption", {
@@ -77,10 +122,11 @@ document.getElementById("upload-form").addEventListener("submit", function (even
                 .then((data) => {
                     if (data.attention_count) {
                         window.attentionCount = data.attention_count;
-                        return Promise.all([...Array(data.attention_count)].map((_, i) => loadAttentionMap(i)));
+                        loadAndDisplayMaps(data.attention_count);
                     }
                 })
-                .finally(() => {
+                .catch(error => {
+                    console.error("Error:", error);
                     loading.style.display = "none";
                 });
         }
