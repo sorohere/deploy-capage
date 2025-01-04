@@ -8,12 +8,13 @@
 </head>
 <body>
     <div class="container">
-        <h1>Image Captioning</h1>
+        <h1>capage: imagecaption</h1>
         <form id="upload-form">
-            <input type="file" id="image" name="image" accept="image/*" required>
-            <button type="submit">Generate Caption</button>
+            <input type="file" id="image" name="image" accept="image/*" required><br>
+            <button type="submit">getCaption</button>
+            <button type="submit">getAttention</button>
         </form>
-        <div id="loading" style="display: none;">Generating caption...</div>
+        <div id="loading" style="display: none;"></div>
         <div class="caption" id="caption-text"></div>
         <div id="attention-maps"></div>
     </div>
