@@ -13,9 +13,9 @@
             <input type="file" id="image" name="image" accept="image/*" required>
             <button type="submit">Generate Caption</button>
         </form>
-        <br>
-        <br>
+        <div id="loading" style="display: none;">Generating caption...</div>
         <div class="caption" id="caption-text"></div>
+        <div id="attention-maps"></div>
     </div>
 
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
